@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light dark">
+  <title>CHRONA — High-Precision Global Time Engine</title>
+  <meta name="description" content="High-precision zero-latency timezone converter, world clock, and time calculator. Real-time bidirectional conversion across 50,000+ cities and IANA time zones.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Ambient Background Mesh Glow -->
+  <div class="ambient-glow" aria-hidden="true"></div>
+
+  <!-- Floating Island Navigation -->
+  <header class="island-header">
+    <div class="island-nav-shell">
+      <div class="brand-block" id="brandBtn" role="button" tabindex="0" title="CHRONA Global Time Engine">
+        <svg class="brand-symbol" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+          <circle cx="14" cy="14" r="12" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2 3"/>
+          <circle cx="14" cy="14" r="7" stroke="currentColor" stroke-width="1.75"/>
+          <circle cx="14" cy="14" r="2.5" fill="currentColor"/>
+          <line x1="14" y1="2" x2="14" y2="5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <line x1="14" y1="23" x2="14" y2="26" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <line x1="2" y1="14" x2="5" y2="14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <line x1="23" y1="14" x2="26" y2="14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <span class="brand-text">CHRONA</span>
+      </div>
+
+      <nav class="island-tabs" aria-label="Tool Selection">
+        <button type="button" class="tab-btn active" id="tabConverter" data-view="viewConverter">
+          <span class="tab-label">Converter</span>
+        </button>
+        <button type="button" class="tab-btn" id="tabWorldClock" data-view="viewWorldClock">
+          <span class="tab-label">World Clock</span>
+        </button>
+        <button type="button" class="tab-btn" id="tabTimeCalc" data-view="viewTimeCalc">
+          <span class="tab-label">Calculator</span>
+        </button>
+      </nav>
+
+      <div class="header-actions">
+        <button id="themeToggle" class="theme-pill-btn" type="button" aria-label="Toggle visual theme" title="Toggle theme">
+          <svg class="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="12" y1="1" x2="12" y2="3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            <line x1="12" y1="20.5" x2="12" y2="23" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            <line x1="4.22" y1="4.22" x2="6" y2="6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            <line x1="18" y1="18" x2="19.78" y2="19.78" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            <line x1="1" y1="12" x2="3.5" y2="12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            <line x1="20.5" y1="12" x2="23" y2="12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            <line x1="4.22" y1="19.78" x2="6" y2="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            <line x1="18" y1="6" x2="19.78" y2="4.22" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+          <svg class="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Viewport -->
+  <main class="app-viewport">
+
+    <!-- ========================================================
+         VIEW 1: TIME ZONE CONVERTER (Double-Bezel Architecture)
+         ======================================================== -->
+    <section id="viewConverter" class="view-panel active">
+      <div class="hero-block">
+        <div class="eyebrow-badge">
+          <span class="live-dot" aria-hidden="true"></span>
+          <span>Zero-Latency Global Engine</span>
+        </div>
+        <h1 class="hero-title">Global Time, Synchronized.</h1>
+        <p class="hero-subtitle">Type anywhere to convert everywhere. Fluid bidirectional conversion across 50,000+ world cities and time zones.</p>
+      </div>
+
+      <!-- Outer Bezel Shell -->
+      <div class="double-bezel-outer">
+        <div class="double-bezel-inner">
+          <div id="converterClockGrid" class="converter-grid">
+            <!-- Dynamic Clocks Injected Here -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Tactile Control Bar -->
+      <div class="control-island-bar">
+        <!-- 12h / 24h Toggle -->
+        <div id="ctrlWidget1224" class="pill-segmented-toggle" role="radiogroup" aria-label="Time Format">
+          <span class="segment-slider" id="slider1224"></span>
+          <button type="button" class="segment-btn active" id="btnFmt12">12H</button>
+          <button type="button" class="segment-btn" id="btnFmt24">24H</button>
+        </div>
+
+        <!-- Mode Toggle: Time vs Date -->
+        <div id="ctrlWidgetTimeDate" class="pill-segmented-toggle" role="radiogroup" aria-label="Mode">
+          <span class="segment-slider" id="sliderTimeDate"></span>
+          <button type="button" class="segment-btn active" id="btnModeTime">TIME</button>
+          <button type="button" class="segment-btn" id="btnModeDate">DATE</button>
+        </div>
+
+        <!-- Quick Now Button -->
+        <button type="button" id="btnNowReset" class="tactile-action-btn" title="Reset to current time">
+          <span>NOW</span>
+          <span class="btn-micro-icon">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="23 4 23 10 17 10"></polyline>
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+            </svg>
+          </span>
+        </button>
+
+        <!-- Copy Shareable Link -->
+        <button type="button" id="btnShareLink" class="tactile-action-btn primary" title="Copy shareable link">
+          <span id="shareBtnText">SHARE LINK</span>
+          <span class="btn-micro-icon">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+            </svg>
+          </span>
+        </button>
+
+        <!-- Add Time Zone -->
+        <button type="button" id="btnAddZone" class="tactile-action-btn secondary" title="Add another city">
+          <span>ADD CITY</span>
+          <span class="btn-micro-icon">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+          </span>
+        </button>
+      </div>
+
+      <div class="pro-tips-bar">
+        <span class="tip-kbd">PRO TIP</span>
+        <span class="tip-msg">Natural shorthand: type <code>3p</code>, <code>1430</code>, <code>noon</code>, or <code>midnight</code> directly into any box.</span>
+      </div>
+    </section>
+
+    <!-- ========================================================
+         VIEW 2: WORLD CLOCK (Live Bento Grid)
+         ======================================================== -->
+    <section id="viewWorldClock" class="view-panel" hidden>
+      <div class="hero-block">
+        <div class="eyebrow-badge">
+          <span class="live-dot" aria-hidden="true"></span>
+          <span>Real-Time Chronometer</span>
+        </div>
+        <h1 class="hero-title">World Observatory</h1>
+        <p class="hero-subtitle">Simultaneous live tracking across financial centers and global hubs with sub-second accuracy.</p>
+      </div>
+
+      <div class="worldclock-toolbar">
+        <div id="wcToggle1224" class="pill-segmented-toggle" role="radiogroup" aria-label="World Clock Format">
+          <span class="segment-slider" id="wcSlider1224"></span>
+          <button type="button" class="segment-btn active" id="wcBtn12">12H</button>
+          <button type="button" class="segment-btn" id="wcBtn24">24H</button>
+        </div>
+        <button type="button" id="wcAddCityBtn" class="tactile-action-btn primary">
+          <span>+ ADD OBSERVATORY CLOCK</span>
+        </button>
+      </div>
+
+      <div id="worldClockBento" class="world-bento-grid">
+        <!-- Rendered dynamically -->
+      </div>
+    </section>
+
+    <!-- ========================================================
+         VIEW 3: TIME CALCULATOR (High-Precision Math Engine)
+         ======================================================== -->
+    <section id="viewTimeCalc" class="view-panel" hidden>
+      <div class="hero-block">
+        <div class="eyebrow-badge">
+          <span>Mathematical Delta Engine</span>
+        </div>
+        <h1 class="hero-title">Temporal Calculator</h1>
+        <p class="hero-subtitle">Calculate exact durations between timestamps, or compute future and past dates with microsecond fidelity.</p>
+      </div>
+
+      <div class="calc-toolbar">
+        <div id="calcModeToggle" class="pill-segmented-toggle wide" role="radiogroup">
+          <span class="segment-slider" id="calcSlider"></span>
+          <button type="button" class="segment-btn active" id="calcModeBetween">INTERVAL DIFFERENCE</button>
+          <button type="button" class="segment-btn" id="calcModeAfter">ADD / SUBTRACT OFFSET</button>
+        </div>
+      </div>
+
+      <!-- Double Bezel Calculator Card -->
+      <div class="double-bezel-outer calc-bezel">
+        <div class="double-bezel-inner">
+          <!-- Mode A: Difference -->
+          <div id="calcPanelBetween" class="calc-inner-panel">
+            <div class="calc-inputs-row">
+              <div class="calc-field-group">
+                <label for="calcInputStart">ORIGIN TIMESTAMP</label>
+                <input type="datetime-local" id="calcInputStart" class="premium-calc-input">
+              </div>
+              <div class="calc-field-group">
+                <label for="calcInputEnd">TARGET TIMESTAMP</label>
+                <input type="datetime-local" id="calcInputEnd" class="premium-calc-input">
+              </div>
+            </div>
+
+            <div id="calcOutputDiff" class="calc-hero-result">
+              <!-- Dynamically rendered -->
+            </div>
+          </div>
+
+          <!-- Mode B: Add / Subtract -->
+          <div id="calcPanelAfter" class="calc-inner-panel" hidden>
+            <div class="calc-inputs-row">
+              <div class="calc-field-group">
+                <label for="calcInputBase">BASE TIMESTAMP</label>
+                <input type="datetime-local" id="calcInputBase" class="premium-calc-input">
+              </div>
+              <div class="calc-field-group">
+                <label for="calcSelectOp">OPERATION</label>
+                <select id="calcSelectOp" class="premium-calc-select">
+                  <option value="add">+ ADD DURATION (FORWARD)</option>
+                  <option value="sub">&minus; SUBTRACT DURATION (BACKWARD)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="calc-duration-triad">
+              <div class="calc-field-group">
+                <label for="calcFieldDays">DAYS</label>
+                <input type="number" id="calcFieldDays" class="premium-calc-input mono" min="0" value="0">
+              </div>
+              <div class="calc-field-group">
+                <label for="calcFieldHours">HOURS</label>
+                <input type="number" id="calcFieldHours" class="premium-calc-input mono" min="0" value="2">
+              </div>
+              <div class="calc-field-group">
+                <label for="calcFieldMins">MINUTES</label>
+                <input type="number" id="calcFieldMins" class="premium-calc-input mono" min="0" value="30">
+              </div>
+            </div>
+
+            <div id="calcOutputAdd" class="calc-hero-result">
+              <!-- Dynamically rendered -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ========================================================
+       ULTRA-FAST SEARCH PICKER MODAL (0ms Latency + Hybrid Remote)
+       ======================================================== -->
+  <div id="searchModal" class="search-modal-backdrop" hidden>
+    <div class="search-modal-shell">
+      <div class="search-modal-header">
+        <div class="search-input-wrap">
+          <svg class="search-lens-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input
+            type="search"
+            id="searchInput"
+            placeholder="Search any world city, country, or code (e.g. London, Israel, IST, Tokyo, Paris)..."
+            autocomplete="off"
+            spellcheck="false"
+          >
+          <span class="search-esc-badge" id="searchEscBadge">ESC</span>
+        </div>
+        <button type="button" class="modal-close-btn" id="modalCloseBtn" aria-label="Close search">&times;</button>
+      </div>
+
+      <div class="search-meta-bar">
+        <span id="searchResultCount" class="search-count-label">50,000+ global locations indexed</span>
+        <span class="search-hint-nav">Use <kbd>&uarr;</kbd> <kbd>&darr;</kbd> to navigate, <kbd>Enter</kbd> to select</span>
+      </div>
+
+      <ul id="searchResultsList" class="search-results-list" role="listbox">
+        <!-- Live Instant Results -->
+      </ul>
+    </div>
+  </div>
+
+  <!-- Minimalist Executive Footer -->
+  <footer class="app-footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <span class="footer-logo">CHRONA</span>
+        <span class="footer-tagline">High-Precision Temporal Infrastructure</span>
+      </div>
+      <div class="footer-nav">
+        <button type="button" id="footBtnConv">Converter</button>
+        <button type="button" id="footBtnWorld">World Clock</button>
+        <button type="button" id="footBtnCalc">Calculator</button>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scripts: tzdata.js first, then app.js -->
+  <script src="tzdata.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
