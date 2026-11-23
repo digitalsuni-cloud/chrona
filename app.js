@@ -306,30 +306,81 @@ let clockCounter = 1;
 
 let converterClocks = [];
 
-function setupInitialConverterClocks() {
-  let localTz = 'UTC';
+// World Observatory state (declared here so loadState can populate before render)
+let bentoWorldHubs = [
+  { city: 'London', tz: 'Europe/London', country: 'United Kingdom' },
+  { city: 'New York', tz: 'America/New_York', country: 'United States' },
+  { city: 'Tokyo', tz: 'Asia/Tokyo', country: 'Japan' },
+  { city: 'Sydney', tz: 'Australia/Sydney', country: 'Australia' },
+  { city: 'Paris', tz: 'Europe/Paris', country: 'France' },
+  { city: 'Dubai', tz: 'Asia/Dubai', country: 'United Arab Emirates' },
+  { city: 'Singapore', tz: 'Asia/Singapore', country: 'Singapore' },
+  { city: 'Zurich', tz: 'Europe/Zurich', country: 'Switzerland' }
+];
+let isWc24Hour = false;
+
+// ── PERSISTENCE ──────────────────────────────────────────
+const STORAGE_KEY = 'chrona-state-v1';
+
+function saveState() {
   try {
-    localTz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      converterClocks: converterClocks.map(c => ({ city: c.city, tz: c.tz, country: c.country, tag: c.tag })),
+      is24HourFormat,
+      converterMode,
+      bentoWorldHubs,
+      isWc24Hour
+    }));
   } catch {}
+}
 
-  const localInfo = findLocation(localTz);
-  converterClocks.push({
-    id: clockCounter++,
-    city: localInfo.city,
-    tz: localInfo.tz,
-    country: localInfo.country || '',
-    tag: 'LOCAL SYSTEM'
-  });
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
 
-  const comparisonTz = (localTz === 'America/New_York') ? 'Europe/London' : 'America/New_York';
-  const compInfo = findLocation(comparisonTz);
-  converterClocks.push({
-    id: clockCounter++,
-    city: compInfo.city,
-    tz: compInfo.tz,
-    country: compInfo.country || '',
-    tag: 'REFERENCE'
-  });
+function setupInitialConverterClocks() {
+  const saved = loadState();
+
+  if (saved && Array.isArray(saved.converterClocks) && saved.converterClocks.length >= 2) {
+    // Restore saved zones
+    converterClocks = saved.converterClocks.map(c => ({ ...c, id: clockCounter++ }));
+    is24HourFormat = !!saved.is24HourFormat;
+    converterMode = saved.converterMode === 'date' ? 'date' : 'time';
+
+    // Restore world clock hubs if present
+    if (Array.isArray(saved.bentoWorldHubs) && saved.bentoWorldHubs.length > 0) {
+      bentoWorldHubs = saved.bentoWorldHubs;
+    }
+    isWc24Hour = !!saved.isWc24Hour;
+  } else {
+    // Fresh defaults
+    let localTz = 'UTC';
+    try {
+      localTz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+    } catch {}
+
+    const localInfo = findLocation(localTz);
+    converterClocks.push({
+      id: clockCounter++,
+      city: localInfo.city,
+      tz: localInfo.tz,
+      country: localInfo.country || '',
+      tag: 'LOCAL SYSTEM'
+    });
+
+    const comparisonTz = (localTz === 'America/New_York') ? 'Europe/London' : 'America/New_York';
+    const compInfo = findLocation(comparisonTz);
+    converterClocks.push({
+      id: clockCounter++,
+      city: compInfo.city,
+      tz: compInfo.tz,
+      country: compInfo.country || '',
+      tag: 'REFERENCE'
+    });
+  }
 
   activeClockId = converterClocks[0].id;
 }
@@ -338,6 +389,7 @@ const converterClockGrid = document.getElementById('converterClockGrid');
 
 function renderConverterGrid() {
   if (!converterClockGrid) return;
+  saveState();
   converterClockGrid.innerHTML = '';
 
   const refClock = converterClocks.find(c => c.id === activeClockId) || converterClocks[0];
@@ -367,16 +419,17 @@ function renderConverterGrid() {
     else if (diffDays > 1) relBadgeHtml = `<span class="relative-day-chip is-next">+${diffDays} DAYS</span>`;
     else if (diffDays < -1) relBadgeHtml = `<span class="relative-day-chip is-prev">${diffDays} DAYS</span>`;
 
-    // Time value formatting
+    // Time value formatting – AM/PM rendered as overlay, not in input value
     let timeVal = '';
+    let ampmOverlay = '';
     const mStr = String(parts.minute).padStart(2, '0');
     if (is24HourFormat) {
       timeVal = `${String(parts.hour).padStart(2, '0')}:${mStr}`;
     } else {
-      const ampm = parts.hour >= 12 ? 'PM' : 'AM';
+      ampmOverlay = parts.hour >= 12 ? 'PM' : 'AM';
       let h12 = parts.hour % 12;
       if (h12 === 0) h12 = 12;
-      timeVal = `${h12}:${mStr} ${ampm}`;
+      timeVal = `${h12}:${mStr}`;
     }
 
     const dateVal = `${parts.year}-${String(parts.month).padStart(2, '0')}-${String(parts.day).padStart(2, '0')}`;
@@ -415,6 +468,7 @@ function renderConverterGrid() {
             autocomplete="off"
             aria-label="Time in ${clock.city}"
           />
+          ${ampmOverlay ? `<span class="ampm-overlay">${ampmOverlay}</span>` : ''}
           ${relBadgeHtml}
         ` : `
           <input
@@ -439,9 +493,9 @@ function renderConverterGrid() {
       <button type="button" class="city-picker-trigger" data-action="choose-city">
         <div class="city-meta-block">
           <div class="city-title-row">
-            <span class="city-name-text">${clock.city}</span>
+            <span class="city-name-text" title="${clock.city}">${clock.city}</span>
           </div>
-          <span class="city-sub-text">${offset} &middot; ${clock.tz}</span>
+          <span class="city-sub-text" title="${offset} · ${clock.tz}">${offset} &middot; ${clock.tz}</span>
         </div>
         <span class="abbrev-badge">${abbrev || 'UTC'}</span>
       </button>
@@ -509,6 +563,11 @@ function renderConverterGrid() {
 
     converterClockGrid.appendChild(cell);
   });
+
+  // Show tooltip only when text is actually truncated (overflowing)
+  converterClockGrid.querySelectorAll('.city-name-text, .city-sub-text').forEach(el => {
+    if (el.scrollWidth <= el.clientWidth) el.removeAttribute('title');
+  });
 }
 
 function onConverterTimeTyping(clockId, val) {
@@ -569,17 +628,22 @@ function updateSiblingClocks(sourceClockId) {
     const parts = getTimezoneParts(new Date(baseEpochMs), clock.tz);
     const mStr = String(parts.minute).padStart(2, '0');
     let timeVal = '';
+    let ampmText = '';
     if (is24HourFormat) {
       timeVal = `${String(parts.hour).padStart(2, '0')}:${mStr}`;
     } else {
-      const ampm = parts.hour >= 12 ? 'PM' : 'AM';
+      ampmText = parts.hour >= 12 ? 'PM' : 'AM';
       let h12 = parts.hour % 12;
       if (h12 === 0) h12 = 12;
-      timeVal = `${h12}:${mStr} ${ampm}`;
+      timeVal = `${h12}:${mStr}`;
     }
 
     const inp = cell.querySelector('.chrono-time-input');
     if (inp) inp.value = timeVal;
+
+    // Update AM/PM overlay
+    const ampmEl = cell.querySelector('.ampm-overlay');
+    if (ampmEl) ampmEl.textContent = ampmText;
 
     const dateDisplay = cell.querySelector('.cell-date-display span');
     if (dateDisplay) {
@@ -686,17 +750,7 @@ if (btnShareLink) {
 }
 
 // ── WORLD OBSERVATORY (Bento Grid) ───────────────────────
-let bentoWorldHubs = [
-  { city: 'London', tz: 'Europe/London', country: 'United Kingdom' },
-  { city: 'New York', tz: 'America/New_York', country: 'United States' },
-  { city: 'Tokyo', tz: 'Asia/Tokyo', country: 'Japan' },
-  { city: 'Sydney', tz: 'Australia/Sydney', country: 'Australia' },
-  { city: 'Paris', tz: 'Europe/Paris', country: 'France' },
-  { city: 'Dubai', tz: 'Asia/Dubai', country: 'United Arab Emirates' },
-  { city: 'Singapore', tz: 'Asia/Singapore', country: 'Singapore' },
-  { city: 'Zurich', tz: 'Europe/Zurich', country: 'Switzerland' }
-];
-let isWc24Hour = false;
+// (bentoWorldHubs and isWc24Hour declared earlier for state persistence)
 
 const worldClockBento = document.getElementById('worldClockBento');
 const wcToggle1224 = document.getElementById('wcToggle1224');
@@ -731,6 +785,7 @@ if (wcAddCityBtn) {
 
 function renderWorldBento() {
   if (!worldClockBento) return;
+  saveState();
   worldClockBento.innerHTML = '';
   const now = new Date();
   const localTz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
@@ -1127,6 +1182,16 @@ if (themeToggle) {
   initThemeMode();
   initMasterLocations();
   setupInitialConverterClocks();
+
+  // Sync UI controls to restored state
+  setTimeFormat(is24HourFormat);
+  setConverterMode(converterMode);
+  if (wcToggle1224) wcToggle1224.classList.toggle('right-active', isWc24Hour);
+  if (wcBtn12 && wcBtn24) {
+    wcBtn12.classList.toggle('active', !isWc24Hour);
+    wcBtn24.classList.toggle('active', isWc24Hour);
+  }
+
   renderConverterGrid();
   initCalculatorDefaults();
 
