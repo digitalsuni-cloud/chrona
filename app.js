@@ -319,6 +319,7 @@ let bentoWorldHubs = [
   { city: 'Zurich', tz: 'Europe/Zurich', country: 'Switzerland' }
 ];
 let isWc24Hour = false;
+let tempUnit = 'C'; // 'C' or 'F'
 
 // ── PERSISTENCE ──────────────────────────────────────────
 const STORAGE_KEY = 'chrona-state-v1';
@@ -330,7 +331,8 @@ function saveState() {
       is24HourFormat,
       converterMode,
       bentoWorldHubs,
-      isWc24Hour
+      isWc24Hour,
+      tempUnit
     }));
   } catch {}
 }
@@ -356,6 +358,7 @@ function setupInitialConverterClocks() {
       bentoWorldHubs = saved.bentoWorldHubs;
     }
     isWc24Hour = !!saved.isWc24Hour;
+    tempUnit = saved.tempUnit === 'F' ? 'F' : 'C';
   } else {
     // Fresh defaults
     let localTz = 'UTC';
@@ -387,6 +390,195 @@ function setupInitialConverterClocks() {
 }
 
 const converterClockGrid = document.getElementById('converterClockGrid');
+
+// ── LIVE WEATHER ENGINE (Open-Meteo + Animated SVGs) ─────
+const GEO_CACHE_KEY = 'chrona-geo-v1';
+const WEATHER_TTL_MS = 10 * 60 * 1000;
+const weatherCache = new Map();
+const weatherInFlight = new Map();
+let geoCache = (() => {
+  try { return JSON.parse(localStorage.getItem(GEO_CACHE_KEY) || '{}'); } catch { return {}; }
+})();
+
+const IANA_CANONICAL_MAP = {
+  'Asia/Calcutta': 'Asia/Kolkata',
+  'Asia/Saigon': 'Asia/Ho_Chi_Minh',
+  'Europe/Kiev': 'Europe/Kyiv',
+  'Asia/Rangoon': 'Asia/Yangon',
+  'Asia/Katmandu': 'Asia/Kathmandu',
+  'America/Buenos_Aires': 'America/Argentina/Buenos_Aires'
+};
+
+function normalizeTzForWeather(tz) {
+  return IANA_CANONICAL_MAP[tz] || tz;
+}
+
+function getWeatherKey(city, tz) {
+  return `${city || ''}|${normalizeTzForWeather(tz || '')}`;
+}
+
+function describeWeatherCode(code, isDay) {
+  if (code === 0) return { kind: isDay ? 'clear-day' : 'clear-night', label: 'Clear sky' };
+  if (code === 1 || code === 2) return { kind: isDay ? 'partly-day' : 'partly-night', label: 'Partly cloudy' };
+  if (code === 3) return { kind: 'cloudy', label: 'Overcast' };
+  if (code === 45 || code === 48) return { kind: 'fog', label: 'Foggy' };
+  if ([51, 53, 55, 56, 57].includes(code)) return { kind: 'drizzle', label: 'Drizzle' };
+  if ([61, 63, 65, 66, 67, 80, 81, 82].includes(code)) return { kind: 'rain', label: 'Rain' };
+  if ([71, 73, 75, 77, 85, 86].includes(code)) return { kind: 'snow', label: 'Snow' };
+  if ([95, 96, 99].includes(code)) return { kind: 'storm', label: 'Thunderstorm' };
+  return { kind: 'cloudy', label: 'Cloudy' };
+}
+
+function renderWeatherIconSvg(kind) {
+  const cloudShape = '<path class="wx-cloud-main" d="M7.5 17.5h9a3.5 3.5 0 0 0 .4-6.98A4.8 4.8 0 0 0 7.7 9.1 3.3 3.3 0 0 0 7.5 17.5Z"/>';
+  switch (kind) {
+    case 'clear-day':
+      return `<svg class="weather-anim-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <g class="wx-sun-rays" stroke-width="1.8" stroke-linecap="round">
+          <line x1="12" y1="2.2" x2="12" y2="4.4"/><line x1="12" y1="19.6" x2="12" y2="21.8"/>
+          <line x1="2.2" y1="12" x2="4.4" y2="12"/><line x1="19.6" y1="12" x2="21.8" y2="12"/>
+          <line x1="5.1" y1="5.1" x2="6.6" y2="6.6"/><line x1="17.4" y1="17.4" x2="18.9" y2="18.9"/>
+          <line x1="18.9" y1="5.1" x2="17.4" y2="6.6"/><line x1="6.6" y1="17.4" x2="5.1" y2="18.9"/>
+        </g>
+        <circle class="wx-sun" cx="12" cy="12" r="4.6"/>
+      </svg>`;
+    case 'clear-night':
+      return `<svg class="weather-anim-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path class="wx-moon" d="M16.8 14.9A6.6 6.6 0 0 1 9.1 7.2a6.6 6.6 0 1 0 7.7 7.7Z"/>
+        <circle class="wx-star wx-star-1" cx="17.5" cy="6.2" r="1.2"/>
+        <circle class="wx-star wx-star-2" cx="20" cy="10.2" r="0.9"/>
+      </svg>`;
+    case 'partly-day':
+      return `<svg class="weather-anim-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <circle class="wx-sun" cx="9" cy="9.2" r="3.6"/>
+        ${cloudShape}
+      </svg>`;
+    case 'partly-night':
+      return `<svg class="weather-anim-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path class="wx-moon" d="M11.6 10.7A4 4 0 0 1 7.3 6.3a4 4 0 1 0 4.3 4.4Z"/>
+        ${cloudShape}
+      </svg>`;
+    case 'cloudy':
+      return `<svg class="weather-anim-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path class="wx-cloud-back" d="M10.5 13h7a2.6 2.6 0 0 0 .3-5.18A3.6 3.6 0 0 0 11 6.7a2.5 2.5 0 0 0-.5 6.3Z"/>
+        ${cloudShape}
+      </svg>`;
+    case 'fog':
+      return `<svg class="weather-anim-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path class="wx-cloud-main" d="M7.5 13.5h9a3.2 3.2 0 0 0 .4-6.38 4.4 4.4 0 0 0-8.5-1.2 3 3 0 0 0-.9 7.58Z"/>
+        <line class="wx-fog-line wx-fog-1" x1="5" y1="16.2" x2="19" y2="16.2" stroke-width="1.7" stroke-linecap="round"/>
+        <line class="wx-fog-line wx-fog-2" x1="6.5" y1="19" x2="17.5" y2="19" stroke-width="1.7" stroke-linecap="round"/>
+        <line class="wx-fog-line wx-fog-3" x1="8" y1="21.6" x2="16" y2="21.6" stroke-width="1.7" stroke-linecap="round"/>
+      </svg>`;
+    case 'drizzle':
+    case 'rain':
+      return `<svg class="weather-anim-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path class="wx-cloud-main" d="M7.5 14.8h9a3.3 3.3 0 0 0 .4-6.58A4.6 4.6 0 0 0 7.9 6.9a3.1 3.1 0 0 0-.4 7.9Z"/>
+        <line class="wx-drop wx-drop-1" x1="8.8" y1="16.5" x2="7.8" y2="19.8" stroke-width="1.7" stroke-linecap="round"/>
+        <line class="wx-drop wx-drop-2" x1="12.6" y1="16.5" x2="11.6" y2="19.8" stroke-width="1.7" stroke-linecap="round"/>
+        <line class="wx-drop wx-drop-3" x1="16.2" y1="16.5" x2="15.2" y2="19.8" stroke-width="1.7" stroke-linecap="round"/>
+      </svg>`;
+    case 'snow':
+      return `<svg class="weather-anim-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path class="wx-cloud-main" d="M7.5 14.8h9a3.3 3.3 0 0 0 .4-6.58A4.6 4.6 0 0 0 7.9 6.9a3.1 3.1 0 0 0-.4 7.9Z"/>
+        <circle class="wx-flake wx-flake-1" cx="8.5" cy="17.5" r="1.3"/>
+        <circle class="wx-flake wx-flake-2" cx="12.2" cy="18.2" r="1.3"/>
+        <circle class="wx-flake wx-flake-3" cx="15.8" cy="17.4" r="1.3"/>
+      </svg>`;
+    case 'storm':
+      return `<svg class="weather-anim-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path class="wx-cloud-main" d="M7.5 14.5h9a3.3 3.3 0 0 0 .4-6.58A4.6 4.6 0 0 0 7.9 6.6a3.1 3.1 0 0 0-.4 7.9Z"/>
+        <polygon class="wx-bolt" points="12.6,14 9.8,18.2 12,18.2 11,22 14.8,17 12.4,17"/>
+      </svg>`;
+    default:
+      return `<svg class="weather-anim-icon" viewBox="0 0 24 24" aria-hidden="true">${cloudShape}</svg>`;
+  }
+}
+
+function buildWeatherPillHtml(data) {
+  if (!data) return '';
+  const temp = tempUnit === 'F' ? Math.round((data.tempC * 9) / 5 + 32) : Math.round(data.tempC);
+  const { kind, label } = describeWeatherCode(data.code, data.isDay);
+  const nextUnit = tempUnit === 'F' ? 'C' : 'F';
+  return `<button type="button" class="weather-pill" data-action="toggle-temp-unit" title="${label} · Click for °${nextUnit}" aria-label="${label}, ${temp} degrees ${tempUnit}">${renderWeatherIconSvg(kind)}<span>${temp}°${tempUnit}</span></button>`;
+}
+
+async function resolveCoordsForLocation(city, tz) {
+  const key = getWeatherKey(city, tz);
+  if (geoCache[key]) return geoCache[key];
+
+  const normTz = normalizeTzForWeather(tz);
+  if (!normTz || normTz === 'UTC' || normTz.startsWith('Etc/')) return null;
+
+  const tzCity = normTz.includes('/') ? normTz.split('/').pop().replace(/_/g, ' ') : '';
+  const cleanCity = (city || '').replace(/\s*\([^)]*\)/g, '').trim();
+  const looksLikeAbbrev = /^[A-Z0-9+-]{2,6}$/.test(cleanCity) || /\([^)]*(Time|Standard|Daylight|Summer)/i.test(city || '');
+  const queries = looksLikeAbbrev ? [tzCity] : [cleanCity, tzCity].filter(Boolean);
+
+  for (const q of [...new Set(queries)]) {
+    try {
+      const resp = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=5`);
+      if (!resp.ok) continue;
+      const json = await resp.json();
+      const results = Array.isArray(json.results) ? json.results : [];
+      if (results.length === 0) continue;
+      const exactTz = results.find(r => normalizeTzForWeather(r.timezone) === normTz);
+      const pick = exactTz || (q === tzCity ? results[0] : null);
+      if (pick) {
+        const coords = { lat: pick.latitude, lon: pick.longitude };
+        geoCache[key] = coords;
+        try { localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(geoCache)); } catch {}
+        return coords;
+      }
+    } catch {}
+  }
+  return null;
+}
+
+function getCachedWeather(city, tz) {
+  const entry = weatherCache.get(getWeatherKey(city, tz));
+  return entry ? entry.data : null;
+}
+
+function ensureLocationWeather(city, tz, onReady) {
+  const key = getWeatherKey(city, tz);
+  const existing = weatherCache.get(key);
+  if (existing && (Date.now() - existing.fetchedAt) < WEATHER_TTL_MS) {
+    return;
+  }
+  if (weatherInFlight.has(key)) {
+    if (onReady) weatherInFlight.get(key).then(data => { if (data) onReady(data); });
+    return;
+  }
+  const promise = (async () => {
+    const coords = await resolveCoordsForLocation(city, tz);
+    if (!coords) return null;
+    try {
+      const resp = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&current=temperature_2m,weather_code,is_day`);
+      if (!resp.ok) return null;
+      const json = await resp.json();
+      const cur = json && json.current;
+      if (!cur || typeof cur.temperature_2m !== 'number') return null;
+      const data = { tempC: cur.temperature_2m, code: cur.weather_code, isDay: cur.is_day === 1 };
+      weatherCache.set(key, { data, fetchedAt: Date.now() });
+      return data;
+    } catch {
+      return null;
+    } finally {
+      weatherInFlight.delete(key);
+    }
+  })();
+  weatherInFlight.set(key, promise);
+  if (onReady) promise.then(data => { if (data) onReady(data); });
+}
+
+function toggleTempUnit() {
+  tempUnit = tempUnit === 'C' ? 'F' : 'C';
+  saveState();
+  renderConverterGrid();
+  const wcView = document.getElementById('viewWorldClock');
+  if (wcView && !wcView.hidden) renderWorldBento();
+}
 
 function renderConverterGrid() {
   if (!converterClockGrid) return;
@@ -507,13 +699,16 @@ function renderConverterGrid() {
       </button>
 
       <div class="cell-date-display">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-          <line x1="16" y1="2" x2="16" y2="6"></line>
-          <line x1="8" y1="2" x2="8" y2="6"></line>
-          <line x1="3" y1="10" x2="21" y2="10"></line>
-        </svg>
-        <span>${formattedFullDate}</span>
+        <div class="cell-date-left">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+          </svg>
+          <span class="cell-date-text">${formattedFullDate}</span>
+        </div>
+        <div class="weather-slot" data-weather-key="${getWeatherKey(clock.city, clock.tz)}">${buildWeatherPillHtml(getCachedWeather(clock.city, clock.tz))}</div>
       </div>
     `;
 
@@ -570,6 +765,13 @@ function renderConverterGrid() {
     }
 
     converterClockGrid.appendChild(cell);
+
+    const wKey = getWeatherKey(clock.city, clock.tz);
+    ensureLocationWeather(clock.city, clock.tz, data => {
+      document.querySelectorAll(`.weather-slot[data-weather-key="${CSS.escape(wKey)}"]`).forEach(slot => {
+        slot.innerHTML = buildWeatherPillHtml(data);
+      });
+    });
   });
 
   // Show tooltip only when text is actually truncated (overflowing)
@@ -655,7 +857,7 @@ function updateSiblingClocks(sourceClockId) {
     const ampmEl = cell.querySelector('.ampm-overlay');
     if (ampmEl) ampmEl.textContent = ampmText;
 
-    const dateDisplay = cell.querySelector('.cell-date-display span');
+    const dateDisplay = cell.querySelector('.cell-date-display .cell-date-text');
     if (dateDisplay) {
       try {
         dateDisplay.textContent = new Date(baseEpochMs).toLocaleDateString('en-US', {
@@ -850,6 +1052,7 @@ function renderWorldBento() {
         <span class="bento-time-digits">${timeStr}</span>
         ${ampmStr ? `<span class="bento-ampm">${ampmStr}</span>` : ''}
         <span class="bento-seconds">:${sStr}</span>
+        <div class="weather-slot bento-weather-slot" data-weather-key="${getWeatherKey(hub.city, hub.tz)}">${buildWeatherPillHtml(getCachedWeather(hub.city, hub.tz))}</div>
       </div>
 
       <div class="bento-bottom-meta">
@@ -864,8 +1067,21 @@ function renderWorldBento() {
     });
 
     worldClockBento.appendChild(card);
+
+    const wKey = getWeatherKey(hub.city, hub.tz);
+    ensureLocationWeather(hub.city, hub.tz, data => {
+      document.querySelectorAll(`.weather-slot[data-weather-key="${CSS.escape(wKey)}"]`).forEach(slot => {
+        slot.innerHTML = buildWeatherPillHtml(data);
+      });
+    });
   });
 }
+
+document.addEventListener('click', (e) => {
+  if (e.target.closest('[data-action="toggle-temp-unit"]')) {
+    toggleTempUnit();
+  }
+});
 
 // Live tick for World Observatory every second
 setInterval(() => {
