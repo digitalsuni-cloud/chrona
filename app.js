@@ -303,6 +303,7 @@ let activeClockId = 0;
 let is24HourFormat = false;
 let converterMode = 'time'; // 'time' or 'date'
 let clockCounter = 1;
+let activeScrub = 'now'; // tracks last scrub action: 'now' | '-3600000' | '3600000'
 
 let converterClocks = [];
 
@@ -484,9 +485,9 @@ function renderConverterGrid() {
 
       <!-- Quick Step Scrub Row -->
       <div class="scrub-row">
-        <button type="button" class="scrub-btn" data-scrub="-3600000">&minus;1h</button>
-        <button type="button" class="scrub-btn" data-scrub="3600000">+1h</button>
-        <button type="button" class="scrub-btn" data-scrub="now">NOW</button>
+        <button type="button" class="scrub-btn ${activeScrub === '-3600000' ? 'is-active' : ''}" data-scrub="-3600000">&minus;1h</button>
+        <button type="button" class="scrub-btn ${activeScrub === '3600000' ? 'is-active' : ''}" data-scrub="3600000">+1h</button>
+        <button type="button" class="scrub-btn ${activeScrub === 'now' ? 'is-active' : ''}" data-scrub="now">NOW</button>
       </div>
 
       <!-- City Selector Trigger -->
@@ -535,6 +536,7 @@ function renderConverterGrid() {
         } else {
           baseEpochMs += parseInt(scrubVal, 10);
         }
+        activeScrub = scrubVal;
         activeClockId = clock.id;
         renderConverterGrid();
       });
@@ -581,7 +583,9 @@ function onConverterTimeTyping(clockId, val) {
   activeClockId = clockId;
   if (parsed.isNow) {
     baseEpochMs = Date.now();
+    activeScrub = 'now';
   } else {
+    activeScrub = null;
     baseEpochMs = wallClockToEpoch(
       currentParts.year,
       currentParts.month,
@@ -704,6 +708,7 @@ const btnNowReset = document.getElementById('btnNowReset');
 if (btnNowReset) {
   btnNowReset.addEventListener('click', () => {
     baseEpochMs = Date.now();
+    activeScrub = 'now';
     renderConverterGrid();
   });
 }

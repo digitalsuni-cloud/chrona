@@ -530,6 +530,13 @@ body {
   background: var(--accent-cyan-dim);
 }
 
+.scrub-btn.is-active {
+  color: var(--accent-cyan);
+  border-color: var(--accent-cyan);
+  background: var(--accent-cyan-dim);
+  box-shadow: 0 0 0 2px var(--accent-cyan-glow);
+}
+
 /* City Selection Trigger */
 .city-picker-trigger {
   width: 100%;
