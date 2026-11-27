@@ -457,6 +457,8 @@ body {
   pointer-events: none;
   user-select: none;
   line-height: 1;
+  background: var(--card-bg);
+  padding: 0 3px;
 }
 
 .chrono-time-input:focus, .chrono-date-input:focus {
