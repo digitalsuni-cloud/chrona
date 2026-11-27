@@ -498,7 +498,12 @@ function renderConverterGrid() {
           </div>
           <span class="city-sub-text" title="${offset} · ${clock.tz}">${offset} &middot; ${clock.tz}</span>
         </div>
-        <span class="abbrev-badge">${abbrev || 'UTC'}</span>
+        <div class="city-picker-right">
+          <span class="abbrev-badge">${abbrev || 'UTC'}</span>
+          <svg class="city-picker-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </div>
       </button>
 
       <div class="cell-date-display">
@@ -543,8 +548,9 @@ function renderConverterGrid() {
     });
 
     // Pick city trigger
-    cell.querySelector('[data-action="choose-city"]').addEventListener('click', () => {
-      openSearchModal(selected => {
+    const chooseCityBtn = cell.querySelector('[data-action="choose-city"]');
+    chooseCityBtn.addEventListener('click', () => {
+      openSearchDropdown(chooseCityBtn, selected => {
         clock.city = selected.city;
         clock.tz = selected.tz;
         clock.country = selected.country || '';
@@ -716,7 +722,7 @@ if (btnNowReset) {
 const btnAddZone = document.getElementById('btnAddZone');
 if (btnAddZone) {
   btnAddZone.addEventListener('click', () => {
-    openSearchModal(selected => {
+    openSearchDropdown(btnAddZone, selected => {
       converterClocks.push({
         id: clockCounter++,
         city: selected.city,
@@ -777,7 +783,7 @@ if (wcToggle1224) {
 
 if (wcAddCityBtn) {
   wcAddCityBtn.addEventListener('click', () => {
-    openSearchModal(selected => {
+    openSearchDropdown(wcAddCityBtn, selected => {
       bentoWorldHubs.push({
         city: selected.city,
         tz: selected.tz,
@@ -971,23 +977,94 @@ function runCalculator() {
   if (el) el.addEventListener('input', runCalculator);
 });
 
-// ── INSTANT 0MS SEARCH MODAL (Zero-Lag + Keyboard Nav) ───
-const searchModal = document.getElementById('searchModal');
+// ── INLINE ANCHORED CITY DROPDOWN (0ms Latency + Popover) ─
+const searchDropdown = document.getElementById('searchDropdown');
 const searchInput = document.getElementById('searchInput');
 const searchResultsList = document.getElementById('searchResultsList');
 const searchResultCount = document.getElementById('searchResultCount');
-const modalCloseBtn = document.getElementById('modalCloseBtn');
 const searchEscBadge = document.getElementById('searchEscBadge');
+
+const supportsAnchorPositioning = typeof CSS !== 'undefined' && typeof CSS.supports === 'function' && CSS.supports('position-area: block-end');
 
 let onLocationSelectedCallback = null;
 let currentHighlightedIndex = 0;
 let currentRenderedResults = [];
 let remoteDebounceTimeout = null;
+let activePickerTrigger = null;
+let suppressNextOpenForTrigger = null;
 
-function openSearchModal(callback) {
+function isDropdownOpen() {
+  if (!searchDropdown) return false;
+  return searchDropdown.matches(':popover-open') || searchDropdown.classList.contains(':popover-open');
+}
+
+function clearActiveTriggerState() {
+  if (activePickerTrigger) {
+    activePickerTrigger.classList.remove('is-dropdown-open');
+    activePickerTrigger.style.anchorName = '';
+    activePickerTrigger = null;
+  }
+}
+
+function positionDropdownFallback(triggerEl) {
+  if (!searchDropdown || !triggerEl || supportsAnchorPositioning) return;
+  const rect = triggerEl.getBoundingClientRect();
+  const gap = 6;
+  const maxW = Math.min(480, window.innerWidth - 24);
+  const width = Math.min(maxW, Math.max(rect.width, 320));
+  const estHeight = 350;
+  const spaceBelow = window.innerHeight - rect.bottom - gap;
+  const spaceAbove = rect.top - gap;
+  const openAbove = spaceBelow < Math.min(estHeight, 260) && spaceAbove > spaceBelow;
+
+  const left = Math.max(12, Math.min(rect.left, window.innerWidth - width - 12));
+  searchDropdown.style.width = `${width}px`;
+  searchDropdown.style.left = `${left}px`;
+  if (openAbove) {
+    searchDropdown.style.top = 'auto';
+    searchDropdown.style.bottom = `${window.innerHeight - rect.top + gap}px`;
+  } else {
+    searchDropdown.style.bottom = 'auto';
+    searchDropdown.style.top = `${rect.bottom + gap}px`;
+  }
+}
+
+// Track same-trigger clicks before popover="auto" light-dismiss closes it
+document.addEventListener('pointerdown', (e) => {
+  if (!isDropdownOpen()) {
+    suppressNextOpenForTrigger = null;
+    return;
+  }
+  suppressNextOpenForTrigger = (activePickerTrigger && activePickerTrigger.contains(e.target)) ? activePickerTrigger : null;
+}, true);
+
+function openSearchDropdown(triggerEl, callback) {
+  if (!searchDropdown) return;
+  if (suppressNextOpenForTrigger === triggerEl) {
+    suppressNextOpenForTrigger = null;
+    return;
+  }
+  suppressNextOpenForTrigger = null;
+
+  clearActiveTriggerState();
   onLocationSelectedCallback = callback;
-  if (!searchModal) return;
-  searchModal.hidden = false;
+  activePickerTrigger = triggerEl || null;
+
+  if (activePickerTrigger) {
+    activePickerTrigger.classList.add('is-dropdown-open');
+    if (supportsAnchorPositioning) {
+      activePickerTrigger.style.anchorName = '--city-picker-anchor';
+    } else {
+      positionDropdownFallback(activePickerTrigger);
+    }
+  }
+
+  if (typeof searchDropdown.showPopover === 'function') {
+    if (!isDropdownOpen()) searchDropdown.showPopover();
+  } else {
+    searchDropdown.classList.add(':popover-open');
+  }
+
   if (searchInput) {
     searchInput.value = '';
     searchInput.focus();
@@ -995,26 +1072,42 @@ function openSearchModal(callback) {
   executeInstantSearch('');
 }
 
-function closeSearchModal() {
-  if (!searchModal) return;
-  searchModal.hidden = true;
+function closeSearchDropdown() {
+  if (!searchDropdown) return;
+  if (typeof searchDropdown.hidePopover === 'function') {
+    if (isDropdownOpen()) searchDropdown.hidePopover();
+  } else {
+    searchDropdown.classList.remove(':popover-open');
+  }
+  clearActiveTriggerState();
   onLocationSelectedCallback = null;
   if (activeAbortController) activeAbortController.abort();
 }
 
-if (modalCloseBtn) modalCloseBtn.addEventListener('click', closeSearchModal);
-if (searchEscBadge) searchEscBadge.addEventListener('click', closeSearchModal);
-
-if (searchModal) {
-  searchModal.addEventListener('click', (e) => {
-    if (e.target === searchModal) closeSearchModal();
+if (searchDropdown) {
+  searchDropdown.addEventListener('toggle', (e) => {
+    if (e.newState === 'closed') {
+      clearActiveTriggerState();
+      onLocationSelectedCallback = null;
+      if (activeAbortController) activeAbortController.abort();
+    }
   });
 }
 
+if (searchEscBadge) searchEscBadge.addEventListener('click', closeSearchDropdown);
+
+if (!supportsAnchorPositioning) {
+  const repositionIfOpen = () => {
+    if (isDropdownOpen() && activePickerTrigger) positionDropdownFallback(activePickerTrigger);
+  };
+  window.addEventListener('resize', repositionIfOpen, { passive: true });
+  window.addEventListener('scroll', repositionIfOpen, { passive: true });
+}
+
 document.addEventListener('keydown', (e) => {
-  if (searchModal && !searchModal.hidden) {
+  if (isDropdownOpen()) {
     if (e.key === 'Escape') {
-      closeSearchModal();
+      closeSearchDropdown();
       return;
     }
     if (e.key === 'ArrowDown') {
@@ -1059,10 +1152,11 @@ function selectHighlightedItem() {
 }
 
 function triggerSelection(item) {
-  if (typeof onLocationSelectedCallback === 'function') {
-    onLocationSelectedCallback(item);
+  const cb = onLocationSelectedCallback;
+  closeSearchDropdown();
+  if (typeof cb === 'function') {
+    cb(item);
   }
-  closeSearchModal();
 }
 
 function executeInstantSearch(raw) {

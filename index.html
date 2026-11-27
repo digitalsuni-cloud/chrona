@@ -263,37 +263,35 @@
   </main>
 
   <!-- ========================================================
-       ULTRA-FAST SEARCH PICKER MODAL (0ms Latency + Hybrid Remote)
+       INLINE ANCHORED CITY DROPDOWN (0ms Latency + Hybrid Remote)
        ======================================================== -->
-  <div id="searchModal" class="search-modal-backdrop" hidden>
-    <div class="search-modal-shell">
-      <div class="search-modal-header">
-        <div class="search-input-wrap">
-          <svg class="search-lens-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="11" cy="11" r="8"></circle>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-          </svg>
-          <input
-            type="search"
-            id="searchInput"
-            placeholder="Search any world city, country, or code (e.g. London, Israel, IST, Tokyo, Paris)..."
-            autocomplete="off"
-            spellcheck="false"
-          >
-          <span class="search-esc-badge" id="searchEscBadge">ESC</span>
-        </div>
-        <button type="button" class="modal-close-btn" id="modalCloseBtn" aria-label="Close search">&times;</button>
+  <div id="searchDropdown" class="city-dropdown-panel" popover="auto">
+    <div class="dropdown-search-header">
+      <div class="search-input-wrap">
+        <svg class="search-lens-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input
+          type="search"
+          id="searchInput"
+          placeholder="Search city, country, or code..."
+          autocomplete="off"
+          spellcheck="false"
+          aria-label="Search city or timezone"
+        >
+        <span class="search-esc-badge" id="searchEscBadge">ESC</span>
       </div>
-
-      <div class="search-meta-bar">
-        <span id="searchResultCount" class="search-count-label">50,000+ global locations indexed</span>
-        <span class="search-hint-nav">Use <kbd>&uarr;</kbd> <kbd>&darr;</kbd> to navigate, <kbd>Enter</kbd> to select</span>
-      </div>
-
-      <ul id="searchResultsList" class="search-results-list" role="listbox">
-        <!-- Live Instant Results -->
-      </ul>
     </div>
+
+    <div class="search-meta-bar">
+      <span id="searchResultCount" class="search-count-label">50,000+ global locations</span>
+      <span class="search-hint-nav"><kbd>&uarr;</kbd> <kbd>&darr;</kbd> <kbd>Enter</kbd></span>
+    </div>
+
+    <ul id="searchResultsList" class="search-results-list" role="listbox">
+      <!-- Live Instant Results -->
+    </ul>
   </div>
 
   <!-- Minimalist Executive Footer -->
@@ -311,7 +309,12 @@
     </div>
   </footer>
 
-  <!-- Scripts: tzdata.js first, then app.js -->
+  <!-- Scripts: popover polyfill fallback, tzdata.js, then app.js -->
+  <script type="module">
+    if (!Object.hasOwn(HTMLElement.prototype, "popover")) {
+      import("https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover.min.js");
+    }
+  </script>
   <script src="tzdata.js"></script>
   <script src="app.js"></script>
 </body>
