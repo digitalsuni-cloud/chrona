@@ -682,21 +682,35 @@ function renderConverterGrid() {
         <button type="button" class="scrub-btn ${activeScrub === 'now' ? 'is-active' : ''}" data-scrub="now">NOW</button>
       </div>
 
-      <!-- City Selector Trigger -->
-      <button type="button" class="city-picker-trigger" data-action="choose-city">
+      <!-- City Selector Field (acts as inline search box when active) -->
+      <div class="city-picker-trigger">
         <div class="city-meta-block">
-          <div class="city-title-row">
+          <button type="button" class="city-read-btn" data-action="choose-city">
             <span class="city-name-text" title="${clock.city}">${clock.city}</span>
+            <span class="city-sub-text" title="${offset} · ${clock.tz}">${offset} &middot; ${clock.tz}</span>
+          </button>
+          <div class="city-inline-search-wrap" hidden>
+            <svg class="search-lens-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input
+              type="search"
+              class="city-inline-search"
+              placeholder="Search city, country, or code..."
+              autocomplete="off"
+              spellcheck="false"
+              aria-label="Search city for ${clock.tag}"
+            />
           </div>
-          <span class="city-sub-text" title="${offset} · ${clock.tz}">${offset} &middot; ${clock.tz}</span>
         </div>
-        <div class="city-picker-right">
+        <button type="button" class="city-picker-right" data-action="toggle-city-picker" aria-label="Choose city for ${clock.tag}">
           <span class="abbrev-badge">${abbrev || 'UTC'}</span>
           <svg class="city-picker-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <polyline points="6 9 12 15 18 9"></polyline>
           </svg>
-        </div>
-      </button>
+        </button>
+      </div>
 
       <div class="cell-date-display">
         <div class="cell-date-left">
@@ -742,15 +756,40 @@ function renderConverterGrid() {
       });
     });
 
-    // Pick city trigger
+    // Pick city inline search & toggle
+    const cityBox = cell.querySelector('.city-picker-trigger');
     const chooseCityBtn = cell.querySelector('[data-action="choose-city"]');
-    chooseCityBtn.addEventListener('click', () => {
-      openSearchDropdown(chooseCityBtn, selected => {
-        clock.city = selected.city;
-        clock.tz = selected.tz;
-        clock.country = selected.country || '';
-        renderConverterGrid();
+    const toggleCityBtn = cell.querySelector('[data-action="toggle-city-picker"]');
+    const inlineWrap = cell.querySelector('.city-inline-search-wrap');
+    const inlineInput = cell.querySelector('.city-inline-search');
+
+    const handleCitySelect = selected => {
+      clock.city = selected.city;
+      clock.tz = selected.tz;
+      clock.country = selected.country || '';
+      renderConverterGrid();
+    };
+
+    const openCellDropdown = () => {
+      openSearchDropdown(cityBox, handleCitySelect, {
+        inlineWrap,
+        inlineInput,
+        readBtn: chooseCityBtn
       });
+    };
+
+    chooseCityBtn.addEventListener('click', openCellDropdown);
+    toggleCityBtn.addEventListener('click', () => {
+      if (isDropdownOpen() && activePickerTrigger === cityBox) {
+        closeSearchDropdown();
+      } else {
+        openCellDropdown();
+      }
+    });
+    inlineInput.addEventListener('input', () => {
+      if (isDropdownOpen() && activePickerTrigger === cityBox) {
+        executeInstantSearch(inlineInput.value);
+      }
     });
 
     // Delete cell
@@ -1195,6 +1234,7 @@ function runCalculator() {
 
 // ── INLINE ANCHORED CITY DROPDOWN (0ms Latency + Popover) ─
 const searchDropdown = document.getElementById('searchDropdown');
+const dropdownSearchHeader = document.getElementById('dropdownSearchHeader');
 const searchInput = document.getElementById('searchInput');
 const searchResultsList = document.getElementById('searchResultsList');
 const searchResultCount = document.getElementById('searchResultCount');
@@ -1207,7 +1247,7 @@ let currentHighlightedIndex = 0;
 let currentRenderedResults = [];
 let remoteDebounceTimeout = null;
 let activePickerTrigger = null;
-let suppressNextOpenForTrigger = null;
+let activeInlineControls = null;
 
 function isDropdownOpen() {
   if (!searchDropdown) return false;
@@ -1215,6 +1255,12 @@ function isDropdownOpen() {
 }
 
 function clearActiveTriggerState() {
+  if (activeInlineControls) {
+    if (activeInlineControls.inlineWrap) activeInlineControls.inlineWrap.hidden = true;
+    if (activeInlineControls.readBtn) activeInlineControls.readBtn.hidden = false;
+    if (activeInlineControls.inlineInput) activeInlineControls.inlineInput.value = '';
+    activeInlineControls = null;
+  }
   if (activePickerTrigger) {
     activePickerTrigger.classList.remove('is-dropdown-open');
     activePickerTrigger.style.anchorName = '';
@@ -1245,26 +1291,38 @@ function positionDropdownFallback(triggerEl) {
   }
 }
 
-// Track same-trigger clicks before popover="auto" light-dismiss closes it
+// Light-dismiss for popover="manual": keep open when clicking inside dropdown or active inline box
 document.addEventListener('pointerdown', (e) => {
-  if (!isDropdownOpen()) {
-    suppressNextOpenForTrigger = null;
-    return;
-  }
-  suppressNextOpenForTrigger = (activePickerTrigger && activePickerTrigger.contains(e.target)) ? activePickerTrigger : null;
+  if (!isDropdownOpen()) return;
+  if (searchDropdown && searchDropdown.contains(e.target)) return;
+  if (activePickerTrigger && activePickerTrigger.contains(e.target)) return;
+  closeSearchDropdown();
 }, true);
 
-function openSearchDropdown(triggerEl, callback) {
+function openSearchDropdown(triggerEl, callback, inlineControls = null) {
   if (!searchDropdown) return;
-  if (suppressNextOpenForTrigger === triggerEl) {
-    suppressNextOpenForTrigger = null;
+
+  // Toggle closed if clicking a standalone trigger button (e.g. ADD CITY +) while already open
+  if (!inlineControls && isDropdownOpen() && activePickerTrigger === triggerEl) {
+    closeSearchDropdown();
     return;
   }
-  suppressNextOpenForTrigger = null;
 
   clearActiveTriggerState();
   onLocationSelectedCallback = callback;
   activePickerTrigger = triggerEl || null;
+  activeInlineControls = inlineControls;
+
+  const useInline = !!(inlineControls && inlineControls.inlineInput && inlineControls.inlineWrap && inlineControls.readBtn);
+  if (dropdownSearchHeader) {
+    dropdownSearchHeader.hidden = useInline;
+  }
+
+  if (useInline) {
+    inlineControls.readBtn.hidden = true;
+    inlineControls.inlineWrap.hidden = false;
+    inlineControls.inlineInput.value = '';
+  }
 
   if (activePickerTrigger) {
     activePickerTrigger.classList.add('is-dropdown-open');
@@ -1281,7 +1339,9 @@ function openSearchDropdown(triggerEl, callback) {
     searchDropdown.classList.add(':popover-open');
   }
 
-  if (searchInput) {
+  if (useInline) {
+    inlineControls.inlineInput.focus();
+  } else if (searchInput) {
     searchInput.value = '';
     searchInput.focus();
   }

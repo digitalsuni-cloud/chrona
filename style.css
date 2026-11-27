@@ -550,7 +550,6 @@ body {
   background: var(--card-bg);
   border: 1px solid var(--card-border);
   border-radius: 12px;
-  cursor: pointer;
   text-align: left;
   transition: all 0.2s var(--ease-fluid);
 }
@@ -570,6 +569,10 @@ body {
   align-items: center;
   gap: 0.5rem;
   flex-shrink: 0;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
 }
 
 .city-picker-chevron {
@@ -583,10 +586,57 @@ body {
 }
 
 .city-meta-block {
+  flex: 1;
+  min-width: 0;
+  min-height: 2.85rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.city-read-btn {
+  width: 100%;
   display: flex;
   flex-direction: column;
   gap: 0.15rem;
-  overflow: hidden;
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  min-width: 0;
+}
+
+.city-read-btn[hidden],
+.city-inline-search-wrap[hidden] {
+  display: none;
+}
+
+.city-inline-search-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.city-inline-search {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.98rem;
+  font-weight: 600;
+  padding: 0.25rem 0;
+}
+
+.city-inline-search::placeholder {
+  color: var(--text-tertiary);
+  font-weight: 500;
 }
 
 .city-title-row {
@@ -1199,6 +1249,10 @@ body {
   align-items: center;
   padding: 0.65rem 0.75rem;
   border-bottom: 1px solid var(--divider-line);
+}
+
+.dropdown-search-header[hidden] {
+  display: none;
 }
 
 .search-input-wrap {
