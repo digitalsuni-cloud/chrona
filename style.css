@@ -49,14 +49,14 @@
 }
 
 [data-theme="light"] {
-  --bg-app: #f8fafc;
-  --bg-gradient: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(14, 165, 233, 0.09), transparent 70%);
-  --bezel-outer-bg: rgba(0, 0, 0, 0.02);
-  --bezel-outer-border: rgba(0, 0, 0, 0.08);
-  --bezel-inner-bg: #ffffff;
-  --bezel-inner-highlight: inset 0 1px 1px rgba(255, 255, 255, 1);
+  --bg-app: #eef2f7;
+  --bg-gradient: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(14, 165, 233, 0.12), transparent 70%);
+  --bezel-outer-bg: rgba(0, 0, 0, 0.03);
+  --bezel-outer-border: rgba(0, 0, 0, 0.1);
+  --bezel-inner-bg: #f0f4f9;
+  --bezel-inner-highlight: inset 0 1px 1px rgba(255, 255, 255, 0.8);
 
-  --card-bg: #ffffff;
+  --card-bg: #f5f8fc;
   --card-border: rgba(0, 0, 0, 0.09);
   --card-hover-border: rgba(14, 165, 233, 0.5);
 
@@ -75,11 +75,11 @@
   --badge-night-text: #4f46e5;
 
   --modal-backdrop: rgba(15, 23, 42, 0.4);
-  --modal-bg: #ffffff;
+  --modal-bg: #f0f4f9;
   --modal-border: rgba(0, 0, 0, 0.12);
 
-  --divider-line: rgba(0, 0, 0, 0.07);
-  --shadow-ambient: 0 20px 48px -10px rgba(15, 23, 42, 0.1);
+  --divider-line: rgba(0, 0, 0, 0.08);
+  --shadow-ambient: 0 20px 48px -10px rgba(15, 23, 42, 0.12);
 
   color-scheme: light;
 }
