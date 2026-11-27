@@ -425,16 +425,16 @@ body {
 .time-input-plate {
   position: relative;
   width: 100%;
+  container-type: inline-size;
 }
 
 .chrono-time-input, .chrono-date-input {
   width: 100%;
   font-family: var(--font-mono);
-  font-size: 2.35rem;
   font-weight: 700;
   letter-spacing: -0.04em;
   padding: 0.85rem 1.15rem;
-  padding-right: 6.5rem;
+  padding-right: 6.8rem;
   color: var(--text-primary);
   background: var(--card-bg);
   border: 1.5px solid var(--card-border);
@@ -444,6 +444,14 @@ body {
   transition: all 0.2s var(--ease-fluid);
 }
 
+.chrono-time-input {
+  font-size: clamp(1.5rem, 5vw, 3.15rem);
+}
+
+.chrono-date-input {
+  font-size: clamp(1.1rem, 4vw, 1.85rem);
+}
+
 /* AM/PM overlay – floats inside the input, left of the TODAY badge */
 .ampm-overlay {
   position: absolute;
@@ -451,7 +459,7 @@ body {
   top: 50%;
   transform: translateY(-50%);
   font-family: var(--font-sans);
-  font-size: 1rem;
+  font-size: clamp(0.85rem, 1.6vw, 1.15rem);
   font-weight: 800;
   color: var(--accent-cyan);
   pointer-events: none;
@@ -459,6 +467,20 @@ body {
   line-height: 1;
   background: var(--card-bg);
   padding: 0 3px;
+}
+
+@supports (font-size: 1cqi) {
+  .chrono-time-input {
+    font-size: clamp(1.5rem, 11.5cqi, 3.15rem);
+  }
+
+  .chrono-date-input {
+    font-size: clamp(1.1rem, 6.5cqi, 1.85rem);
+  }
+
+  .ampm-overlay {
+    font-size: clamp(0.85rem, 3.8cqi, 1.15rem);
+  }
 }
 
 .chrono-time-input:focus, .chrono-date-input:focus {
@@ -1050,6 +1072,8 @@ body {
   display: flex;
   align-items: baseline;
   gap: 0.4rem;
+  width: 100%;
+  container-type: inline-size;
 }
 
 .bento-weather-slot {
@@ -1059,7 +1083,7 @@ body {
 
 .bento-time-digits {
   font-family: var(--font-mono);
-  font-size: 2.4rem;
+  font-size: clamp(1.75rem, 5vw, 2.75rem);
   font-weight: 800;
   color: var(--text-primary);
   letter-spacing: -0.04em;
@@ -1069,17 +1093,31 @@ body {
 
 .bento-ampm {
   font-family: var(--font-sans);
-  font-size: 1rem;
+  font-size: clamp(0.85rem, 1.5vw, 1.1rem);
   font-weight: 800;
   color: var(--accent-cyan);
 }
 
 .bento-seconds {
   font-family: var(--font-mono);
-  font-size: 1.15rem;
+  font-size: clamp(0.95rem, 1.8vw, 1.25rem);
   font-weight: 600;
   color: var(--text-tertiary);
   font-feature-settings: "tnum" 1;
+}
+
+@supports (font-size: 1cqi) {
+  .bento-time-digits {
+    font-size: clamp(1.75rem, 9.5cqi, 2.75rem);
+  }
+
+  .bento-ampm {
+    font-size: clamp(0.85rem, 3.6cqi, 1.1rem);
+  }
+
+  .bento-seconds {
+    font-size: clamp(0.95rem, 4.2cqi, 1.25rem);
+  }
 }
 
 .bento-bottom-meta {
@@ -1473,10 +1511,6 @@ body {
   .clock-cell {
     padding: 1.5rem 1.25rem;
     min-width: 100%;
-  }
-
-  .chrono-time-input, .chrono-date-input {
-    font-size: 1.8rem;
   }
 
   .calc-inputs-row, .calc-duration-triad {
