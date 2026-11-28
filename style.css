@@ -349,7 +349,7 @@ body {
   color: var(--text-tertiary);
   cursor: pointer;
   opacity: 0;
-  pointer-events: none;
+  pointer-events: auto;
   transition:
     opacity 0.24s cubic-bezier(0.22, 1, 0.36, 1),
     transform 0.26s cubic-bezier(0.22, 1, 0.36, 1),
@@ -359,11 +359,10 @@ body {
     box-shadow 0.18s var(--ease-fluid);
 }
 
-/* Invisible hover bridge so moving off the bezel onto the rail never flickers */
+/* Invisible edge hover zone extending slightly into the outer card margin */
 .edge-add-city-btn::before {
   content: '';
   position: absolute;
-  inset: -4px -14px;
 }
 
 .edge-add-city-btn.edge-left {
@@ -371,22 +370,24 @@ body {
   transform: translateX(12px) scale(0.96);
 }
 
+.edge-add-city-btn.edge-left::before {
+  inset: -6px -28px -6px -14px;
+}
+
 .edge-add-city-btn.edge-right {
   right: -2.85rem;
   transform: translateX(-12px) scale(0.96);
 }
 
-.converter-stage:hover .edge-add-city-btn,
-.converter-stage:focus-within .edge-add-city-btn,
-.edge-add-city-btn.is-dropdown-open {
-  opacity: 0.88;
-  pointer-events: auto;
-  transform: translateX(0) scale(1);
+.edge-add-city-btn.edge-right::before {
+  inset: -6px -14px -6px -28px;
 }
 
 .edge-add-city-btn:hover,
+.edge-add-city-btn:focus-visible,
 .edge-add-city-btn.is-dropdown-open {
-  opacity: 1 !important;
+  opacity: 1;
+  transform: translateX(0) scale(1);
   color: var(--accent-cyan);
   border-style: solid;
   border-color: var(--accent-cyan);
@@ -587,6 +588,7 @@ body {
   position: absolute;
   top: 0.65rem;
   right: 0.75rem;
+  z-index: 5;
   width: 22px;
   height: 22px;
   border-radius: 50%;
@@ -1702,8 +1704,16 @@ body {
     left: -0.45rem;
   }
 
+  .edge-add-city-btn.edge-left::before {
+    inset: -6px -14px -6px -10px;
+  }
+
   .edge-add-city-btn.edge-right {
     right: -0.45rem;
+  }
+
+  .edge-add-city-btn.edge-right::before {
+    inset: -6px -10px -6px -14px;
   }
 }
 
