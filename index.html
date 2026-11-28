@@ -86,13 +86,25 @@
         <p class="hero-subtitle">Type anywhere to convert everywhere. Fluid bidirectional conversion across 50,000+ world cities and time zones.</p>
       </div>
 
-      <!-- Outer Bezel Shell -->
-      <div class="double-bezel-outer">
-        <div class="double-bezel-inner">
-          <div id="converterClockGrid" class="converter-grid">
-            <!-- Dynamic Clocks Injected Here -->
+      <!-- Outer Bezel Shell + Hover Edge Add-City Rails -->
+      <div class="converter-stage">
+        <button type="button" id="edgeAddLeft" class="edge-add-city-btn edge-left" title="Add city on the left" aria-label="Add city on the left">
+          <span class="edge-add-plus">+</span>
+          <span class="edge-add-label">ADD</span>
+        </button>
+
+        <div class="double-bezel-outer">
+          <div class="double-bezel-inner">
+            <div id="converterClockGrid" class="converter-grid">
+              <!-- Dynamic Clocks Injected Here -->
+            </div>
           </div>
         </div>
+
+        <button type="button" id="edgeAddRight" class="edge-add-city-btn edge-right" title="Add city on the right" aria-label="Add city on the right">
+          <span class="edge-add-plus">+</span>
+          <span class="edge-add-label">ADD</span>
+        </button>
       </div>
 
       <!-- Tactile Control Bar -->

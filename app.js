@@ -304,6 +304,7 @@ let is24HourFormat = false;
 let converterMode = 'time'; // 'time' or 'date'
 let clockCounter = 1;
 let activeScrub = 'now'; // tracks last scrub action: 'now' | '-3600000' | '3600000'
+let justAddedClockId = null;
 
 let converterClocks = [];
 
@@ -609,6 +610,53 @@ function swapAdjacentTimezones(leftIdx) {
   renderConverterGrid();
 }
 
+function addConverterZone(selected, side = 'right') {
+  const newClock = {
+    id: clockCounter++,
+    city: selected.city,
+    tz: selected.tz,
+    country: selected.country || '',
+    tag: `ZONE ${converterClocks.length + 1}`
+  };
+  if (side === 'left') {
+    converterClocks.unshift(newClock);
+  } else {
+    converterClocks.push(newClock);
+  }
+  justAddedClockId = newClock.id;
+  renderConverterGrid();
+}
+
+async function closeClockCell(cell, clockId) {
+  if (converterClocks.length <= 2 || cell.hasAttribute('data-closing')) return;
+  if (typeof isDropdownOpen === 'function' && isDropdownOpen()) closeSearchDropdown();
+
+  cell.classList.remove('is-window-entering');
+  cell.setAttribute('data-closing', '');
+  const adjacentDivider = (cell.nextElementSibling && cell.nextElementSibling.classList.contains('zone-divider'))
+    ? cell.nextElementSibling
+    : (cell.previousElementSibling && cell.previousElementSibling.classList.contains('zone-divider'))
+      ? cell.previousElementSibling
+      : null;
+  if (adjacentDivider) adjacentDivider.setAttribute('data-closing', '');
+
+  // Flush style so CSS exit transitions are active before querying getAnimations()
+  getComputedStyle(cell).opacity;
+  const animations = cell.getAnimations();
+  if (animations.length > 0) {
+    await Promise.race([
+      Promise.allSettled(animations.map(a => a.finished)),
+      new Promise(r => setTimeout(r, 350))
+    ]);
+  }
+
+  converterClocks = converterClocks.filter(c => c.id !== clockId);
+  if (activeClockId === clockId && converterClocks.length > 0) {
+    activeClockId = converterClocks[0].id;
+  }
+  renderConverterGrid();
+}
+
 function renderConverterGrid() {
   if (!converterClockGrid) return;
   saveState();
@@ -616,10 +664,16 @@ function renderConverterGrid() {
 
   const refClock = converterClocks.find(c => c.id === activeClockId) || converterClocks[0];
   const refParts = getTimezoneParts(new Date(baseEpochMs), refClock.tz);
+  let newlyInsertedCell = null;
 
   converterClocks.forEach((clock, index) => {
     const cell = document.createElement('div');
-    cell.className = 'clock-cell';
+    const isEntering = clock.id === justAddedClockId;
+    cell.className = `clock-cell${isEntering ? ' is-window-entering' : ''}`;
+    if (isEntering) {
+      newlyInsertedCell = cell;
+      justAddedClockId = null;
+    }
     cell.id = `clock-cell-${clock.id}`;
     cell.setAttribute('data-clock-id', clock.id);
 
@@ -669,13 +723,13 @@ function renderConverterGrid() {
     }
 
     cell.innerHTML = `
+      ${converterClocks.length > 2 ? `<button type="button" class="btn-cell-delete" data-action="delete" title="Remove ${clock.city}" aria-label="Remove ${clock.city}">&times;</button>` : ''}
       <div class="clock-cell-header">
         <span class="clock-tag-pill">${clock.tag}</span>
         <div class="cell-actions">
           <span class="daynight-indicator ${isDay ? 'day' : 'night'}">
             ${isDay ? '☀️ DAY' : '🌙 NIGHT'}
           </span>
-          ${converterClocks.length > 2 ? `<button type="button" class="btn-cell-delete" data-action="delete" title="Remove">&times;</button>` : ''}
         </div>
       </div>
 
@@ -821,15 +875,10 @@ function renderConverterGrid() {
       }
     });
 
-    // Delete cell
+    // Delete cell with macOS-like window closing effect
     const delBtn = cell.querySelector('[data-action="delete"]');
     if (delBtn) {
-      delBtn.addEventListener('click', () => {
-        if (converterClocks.length <= 2) return;
-        converterClocks = converterClocks.filter(c => c.id !== clock.id);
-        if (activeClockId === clock.id) activeClockId = converterClocks[0].id;
-        renderConverterGrid();
-      });
+      delBtn.addEventListener('click', () => closeClockCell(cell, clock.id));
     }
 
     converterClockGrid.appendChild(cell);
@@ -871,6 +920,10 @@ function renderConverterGrid() {
   converterClockGrid.querySelectorAll('.city-name-text, .city-sub-text').forEach(el => {
     if (el.scrollWidth <= el.clientWidth) el.removeAttribute('title');
   });
+
+  if (newlyInsertedCell) {
+    newlyInsertedCell.scrollIntoView({ behavior: 'smooth', inline: 'nearest', block: 'nearest' });
+  }
 }
 
 function onConverterTimeTyping(clockId, val) {
@@ -1017,16 +1070,21 @@ if (btnNowReset) {
 const btnAddZone = document.getElementById('btnAddZone');
 if (btnAddZone) {
   btnAddZone.addEventListener('click', () => {
-    openSearchDropdown(btnAddZone, selected => {
-      converterClocks.push({
-        id: clockCounter++,
-        city: selected.city,
-        tz: selected.tz,
-        country: selected.country || '',
-        tag: `ZONE ${converterClocks.length + 1}`
-      });
-      renderConverterGrid();
-    });
+    openSearchDropdown(btnAddZone, selected => addConverterZone(selected, 'right'));
+  });
+}
+
+const edgeAddLeft = document.getElementById('edgeAddLeft');
+if (edgeAddLeft) {
+  edgeAddLeft.addEventListener('click', () => {
+    openSearchDropdown(edgeAddLeft, selected => addConverterZone(selected, 'left'));
+  });
+}
+
+const edgeAddRight = document.getElementById('edgeAddRight');
+if (edgeAddRight) {
+  edgeAddRight.addEventListener('click', () => {
+    openSearchDropdown(edgeAddRight, selected => addConverterZone(selected, 'right'));
   });
 }
 
