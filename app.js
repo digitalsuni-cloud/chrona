@@ -580,6 +580,35 @@ function toggleTempUnit() {
   if (wcView && !wcView.hidden) renderWorldBento();
 }
 
+function swapAdjacentTimezones(leftIdx) {
+  const leftClock = converterClocks[leftIdx];
+  const rightClock = converterClocks[leftIdx + 1];
+  if (!leftClock || !rightClock) return;
+
+  // Keep the active column's displayed wall-clock time fixed when swapping zones
+  const anchorClock = converterClocks.find(c => c.id === activeClockId) || leftClock;
+  const anchorWallParts = getTimezoneParts(new Date(baseEpochMs), anchorClock.tz);
+
+  const tmp = { city: leftClock.city, tz: leftClock.tz, country: leftClock.country };
+  leftClock.city = rightClock.city;
+  leftClock.tz = rightClock.tz;
+  leftClock.country = rightClock.country;
+  rightClock.city = tmp.city;
+  rightClock.tz = tmp.tz;
+  rightClock.country = tmp.country;
+
+  baseEpochMs = wallClockToEpoch(
+    anchorWallParts.year,
+    anchorWallParts.month,
+    anchorWallParts.day,
+    anchorWallParts.hour,
+    anchorWallParts.minute,
+    anchorClock.tz
+  );
+
+  renderConverterGrid();
+}
+
 function renderConverterGrid() {
   if (!converterClockGrid) return;
   saveState();
@@ -804,6 +833,31 @@ function renderConverterGrid() {
     }
 
     converterClockGrid.appendChild(cell);
+
+    if (index < converterClocks.length - 1) {
+      const nextClock = converterClocks[index + 1];
+      const divider = document.createElement('div');
+      divider.className = 'zone-divider';
+      divider.innerHTML = `
+        <button
+          type="button"
+          class="swap-zones-btn"
+          title="Swap ${clock.city} and ${nextClock.city} (keep current time)"
+          aria-label="Swap ${clock.city} and ${nextClock.city} timezones"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="17 2 21 6 17 10"></polyline>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <polyline points="7 22 3 18 7 14"></polyline>
+            <line x1="21" y1="18" x2="3" y2="18"></line>
+          </svg>
+        </button>
+      `;
+      divider.querySelector('.swap-zones-btn').addEventListener('click', () => {
+        swapAdjacentTimezones(index);
+      });
+      converterClockGrid.appendChild(divider);
+    }
 
     const wKey = getWeatherKey(clock.city, clock.tz);
     ensureLocationWeather(clock.city, clock.tz, data => {

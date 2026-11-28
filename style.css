@@ -356,8 +356,42 @@ body {
   transition: background-color 0.2s var(--ease-fluid);
 }
 
-.clock-cell:not(:last-child) {
-  border-right: 1px solid var(--divider-line);
+.zone-divider {
+  width: 1px;
+  flex-shrink: 0;
+  background: var(--divider-line);
+  position: relative;
+}
+
+.swap-zones-btn {
+  position: absolute;
+  left: 50%;
+  bottom: 7.4rem;
+  transform: translate(-50%, 50%);
+  z-index: 4;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bezel-inner-bg);
+  border: 1px solid var(--card-border);
+  color: var(--text-secondary);
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  transition: border-color 0.15s var(--ease-fluid), color 0.15s var(--ease-fluid), background-color 0.15s var(--ease-fluid), box-shadow 0.15s var(--ease-fluid), transform 0.2s var(--ease-fluid);
+}
+
+.swap-zones-btn:hover {
+  color: var(--accent-cyan);
+  border-color: var(--accent-cyan);
+  background: var(--card-bg);
+  box-shadow: 0 0 0 3px var(--accent-cyan-glow);
+}
+
+.swap-zones-btn:active {
+  transform: translate(-50%, 50%) scale(0.92);
 }
 
 .clock-cell-header {
@@ -1503,9 +1537,19 @@ body {
     flex-direction: column;
   }
 
-  .clock-cell:not(:last-child) {
-    border-right: none;
-    border-bottom: 1px solid var(--divider-line);
+  .zone-divider {
+    width: 100%;
+    height: 1px;
+  }
+
+  .swap-zones-btn {
+    bottom: auto;
+    top: 50%;
+    transform: translate(-50%, -50%) rotate(90deg);
+  }
+
+  .swap-zones-btn:active {
+    transform: translate(-50%, -50%) rotate(90deg) scale(0.92);
   }
 
   .clock-cell {
